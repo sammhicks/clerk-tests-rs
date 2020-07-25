@@ -1,0 +1,11 @@
+[package]
+name = "gpio-tests"
+version = "0.1.0"
+authors = ["Samuel Hicks <SamMHicks@hotmail.co.uk>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+clerk = "0.4"
+gpio-cdev = "0.3"
