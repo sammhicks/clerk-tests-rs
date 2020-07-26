@@ -93,7 +93,14 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
 
     std::thread::sleep(std::time::Duration::from_millis(500));
 
-    lcd.write_message(&message);
+    lcd.clear();
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    for c in message.chars() {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        lcd.write(c as u8);
+    }
 
     Ok(())
 }
