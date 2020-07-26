@@ -82,12 +82,16 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
 
     lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two));
 
+    std::thread::sleep(std::time::Duration::from_millis(500));
+
     lcd.set_display_control(
         clerk::DisplayControlBuilder::default()
             .set_display(clerk::DisplayState::On)
             .set_cursor(clerk::CursorState::Off)
             .set_cursor_blinking(clerk::CursorBlinking::On),
     );
+
+    std::thread::sleep(std::time::Duration::from_millis(500));
 
     lcd.write_message(&message);
 
