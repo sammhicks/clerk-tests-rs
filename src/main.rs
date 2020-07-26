@@ -58,8 +58,8 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
     let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?;
 
     let register_select = get_line(&mut chip, 17, "register_select")?;
-    let read = get_line(&mut chip, 27, "enable")?;
-    let enable = FakeLine;
+    let read = FakeLine;
+    let enable = get_line(&mut chip, 27, "enable")?;
     let data4 = get_line(&mut chip, 22, "data4")?;
     let data5 = get_line(&mut chip, 23, "data5")?;
     let data6 = get_line(&mut chip, 24, "data6")?;
