@@ -80,7 +80,7 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
     let mut lcd: clerk::Display<_, clerk::DefaultLines> =
         clerk::Display::new(pins.into_connection::<Delay>());
 
-    lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two));
+    lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::One));
 
     std::thread::sleep(std::time::Duration::from_millis(500));
 
