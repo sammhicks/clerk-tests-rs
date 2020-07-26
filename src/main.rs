@@ -1,5 +1,15 @@
 use clerk::{DataPins4Lines, Pins};
 
+struct FakeLine;
+
+impl clerk::DisplayHardwareLayer for FakeLine {
+    fn set_level(&self, _: clerk::Level) {}
+    fn set_direction(&self, _: clerk::Direction) {}
+    fn get_value(&self) -> u8 {
+        0
+    }
+}
+
 struct Line(gpio_cdev::LineHandle);
 
 impl clerk::DisplayHardwareLayer for Line {
@@ -26,43 +36,34 @@ impl clerk::Delay for Delay {
     }
 }
 
+fn get_line(
+    chip: &mut gpio_cdev::Chip,
+    offset: u32,
+    consumer: &'static str,
+) -> Result<Line, gpio_cdev::errors::Error> {
+    Ok(Line(chip.get_line(offset)?.request(
+        gpio_cdev::LineRequestFlags::OUTPUT,
+        0,
+        consumer,
+    )?))
+}
+
 fn main() -> Result<(), gpio_cdev::errors::Error> {
+    let message = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| String::from("Hello World"));
+
+    println!("Message: {:?}", message);
+
     let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?;
 
-    let register_select = Line(chip.get_line(2)?.request(
-        gpio_cdev::LineRequestFlags::OUTPUT,
-        0,
-        "register_select",
-    )?);
-    let read = Line(
-        chip.get_line(3)?
-            .request(gpio_cdev::LineRequestFlags::OUTPUT, 0, "read")?,
-    );
-    let enable = Line(chip.get_line(4)?.request(
-        gpio_cdev::LineRequestFlags::OUTPUT,
-        0,
-        "enable",
-    )?);
-    let data4 = Line(chip.get_line(16)?.request(
-        gpio_cdev::LineRequestFlags::OUTPUT,
-        0,
-        "data4",
-    )?);
-    let data5 = Line(chip.get_line(19)?.request(
-        gpio_cdev::LineRequestFlags::OUTPUT,
-        0,
-        "data5",
-    )?);
-    let data6 = Line(chip.get_line(26)?.request(
-        gpio_cdev::LineRequestFlags::OUTPUT,
-        0,
-        "data6",
-    )?);
-    let data7 = Line(chip.get_line(20)?.request(
-        gpio_cdev::LineRequestFlags::OUTPUT,
-        0,
-        "data7",
-    )?);
+    let register_select = get_line(&mut chip, 17, "register_select")?;
+    let read = get_line(&mut chip, 27, "enable")?;
+    let enable = FakeLine;
+    let data4 = get_line(&mut chip, 22, "data4")?;
+    let data5 = get_line(&mut chip, 23, "data5")?;
+    let data6 = get_line(&mut chip, 24, "data6")?;
+    let data7 = get_line(&mut chip, 25, "data7")?;
 
     let pins = Pins {
         register_select,
@@ -88,14 +89,7 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
             .set_cursor_blinking(clerk::CursorBlinking::On),
     );
 
-    lcd.write_message("Hello");
-
-    lcd.seek(clerk::SeekFrom::Line {
-        line: clerk::DefaultLines::Two,
-        bytes: 5,
-    });
-
-    lcd.write_message("world!");
+    lcd.write_message(&message);
 
     Ok(())
 }
