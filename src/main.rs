@@ -4,24 +4,33 @@ struct FakeLine(&'static str);
 
 impl clerk::DisplayHardwareLayer for FakeLine {
     fn set_level(&self, level: clerk::Level) {
+        #[cfg(feature = "verbose")]
         println!("Setting {} (Fake) to {:?}", self.0, level);
+        #[cfg(not(feature = "verbose"))]
+        drop(level);
     }
     fn set_direction(&self, direction: clerk::Direction) {
+        #[cfg(feature = "verbose")]
         println!("Setting {} (Fake) to {:?}", self.0, direction);
+        #[cfg(not(feature = "verbose"))]
+        drop(direction);
     }
     fn get_value(&self) -> u8 {
+        #[cfg(feature = "verbose")]
         println!("Reading from {} (Fake)", self.0);
         0
     }
 }
 
 struct Line {
+    #[cfg(feature = "verbose")]
     consumer: &'static str,
     handle: gpio_cdev::LineHandle,
 }
 
 impl clerk::DisplayHardwareLayer for Line {
     fn set_level(&self, level: clerk::Level) {
+        #[cfg(feature = "verbose")]
         println!("Setting {} to {:?}", self.consumer, level);
         self.handle
             .set_value(match level {
@@ -31,10 +40,14 @@ impl clerk::DisplayHardwareLayer for Line {
             .unwrap();
     }
     fn set_direction(&self, direction: clerk::Direction) {
+        #[cfg(feature = "verbose")]
         println!("Setting {} to {:?}", self.consumer, direction);
+        #[cfg(not(feature = "verbose"))]
+        drop(direction);
     }
 
     fn get_value(&self) -> u8 {
+        #[cfg(feature = "verbose")]
         println!("Reading from {}", self.consumer);
         0
     }
@@ -49,11 +62,13 @@ impl clerk::Delay for Delay {
     const COMMAND_EXECUTION_TIME: u16 = 37;
 
     fn delay_ns(ns: u16) {
+        #[cfg(feature = "verbose")]
         println!("Sleeping for {} ns", ns);
         std::thread::sleep(std::time::Duration::from_nanos(ns as u64));
     }
 
     fn delay_us(us: u16) {
+        #[cfg(feature = "verbose")]
         println!("Sleeping for {} µs", us);
         std::thread::sleep(std::time::Duration::from_micros(us as u64));
     }
@@ -67,7 +82,11 @@ fn get_line(
     let handle =
         chip.get_line(offset)?
             .request(gpio_cdev::LineRequestFlags::OUTPUT, 0, consumer)?;
-    Ok(Line { consumer, handle })
+    Ok(Line {
+        #[cfg(feature = "verbose")]
+        consumer,
+        handle,
+    })
 }
 
 fn main() -> Result<(), gpio_cdev::errors::Error> {
@@ -102,10 +121,12 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
     let mut lcd: clerk::Display<_, clerk::DefaultLines> =
         clerk::Display::new(pins.into_connection::<Delay>());
 
+    #[cfg(feature = "verbose")]
     println!("init");
 
     lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two));
 
+    #[cfg(feature = "verbose")]
     println!("set_display_control");
 
     lcd.set_display_control(
@@ -115,11 +136,13 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
             .set_cursor_blinking(clerk::CursorBlinking::On),
     );
 
+    #[cfg(feature = "verbose")]
     println!("clear");
 
     lcd.clear();
 
     for c in message.chars() {
+        #[cfg(feature = "verbose")]
         println!("write");
         lcd.write(c as u8);
     }
