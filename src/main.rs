@@ -90,21 +90,33 @@ fn get_line(
 }
 
 fn main() -> Result<(), gpio_cdev::errors::Error> {
+    let screen_rs = 17;
+    let screen_enable = 27;
+    let screen_data4 = 22;
+    let screen_data5 = 23;
+    let screen_data6 = 24;
+    let screen_data7 = 25;
+
+    println!(
+        "RS pin {} enable pin {} D4...7 {}, {}, {}, {}",
+        screen_rs, screen_enable, screen_data4, screen_data5, screen_data6, screen_data7
+    );
+
     let message = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| String::from("Hello World"));
+        .unwrap_or_else(|| String::from("Hello World!"));
 
     println!("Message: {:?}", message);
 
     let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?;
 
-    let register_select = get_line(&mut chip, 17, "register_select")?;
+    let register_select = get_line(&mut chip, screen_rs, "register_select")?;
     let read = FakeLine("read");
-    let enable = get_line(&mut chip, 27, "enable")?;
-    let data4 = get_line(&mut chip, 22, "data4")?;
-    let data5 = get_line(&mut chip, 23, "data5")?;
-    let data6 = get_line(&mut chip, 24, "data6")?;
-    let data7 = get_line(&mut chip, 25, "data7")?;
+    let enable = get_line(&mut chip, screen_enable, "enable")?;
+    let data4 = get_line(&mut chip, screen_data4, "data4")?;
+    let data5 = get_line(&mut chip, screen_data5, "data5")?;
+    let data6 = get_line(&mut chip, screen_data6, "data6")?;
+    let data7 = get_line(&mut chip, screen_data7, "data7")?;
 
     let pins = Pins {
         register_select,
