@@ -108,8 +108,7 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
 
     println!("Message: {:?}", message);
 
-    let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?;
-
+    let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?; //no delay needed here
     let register_select = get_line(&mut chip, screen_rs, "register_select")?;
     let read = FakeLine("read");
     let enable = get_line(&mut chip, screen_enable, "enable")?;
@@ -130,28 +129,30 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
         },
     };
 
-    let mut lcd: clerk::Display<_, clerk::DefaultLines> =
-        clerk::Display::new(pins.into_connection::<Delay>());
+    let mut lcd = clerk::Display::<_, clerk::DefaultLines>::new(pins.into_connection::<Delay>()); //no extra delay needed here
 
     #[cfg(feature = "verbose")]
     println!("init");
 
-    lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two));
+    lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two)); //screen has 4 lines, but electrically, only 2
+    std::thread::sleep(std::time::Duration::from_millis(3)); //with this line commented out, screen goes blank, and cannot be written to subsequently
+                                                             //1.5 ms is marginal as 1.2ms does not work.
 
     #[cfg(feature = "verbose")]
     println!("set_display_control");
 
     lcd.set_display_control(
         clerk::DisplayControlBuilder::default()
-            .set_display(clerk::DisplayState::On)
-            .set_cursor(clerk::CursorState::Off)
-            .set_cursor_blinking(clerk::CursorBlinking::On),
-    );
+            .set_display(clerk::DisplayState::On) //if this is Off, nothing displays on the screen
+            .set_cursor_blinking(clerk::CursorBlinking::On) //blinking on forces the cursor on
+            .set_cursor(clerk::CursorState::Off), //normally we want the cursor off
+    ); //no extra delay needed here
 
     #[cfg(feature = "verbose")]
     println!("clear");
 
     lcd.clear();
+    std::thread::sleep(std::time::Duration::from_millis(2)); //if this line is commented out, garbage or nothing appears. 1ms is marginal
 
     for c in message.chars() {
         #[cfg(feature = "verbose")]
