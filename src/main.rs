@@ -75,24 +75,76 @@ fn get_line(
     Ok(Line { handle })
 }
 
-fn main() -> Result<(), gpio_cdev::errors::Error> {
-    // uses BCM GPIO pin numbers
-    let screen_rs = 17; //     GPIO 0  Physical pin 11 RS ie reset goes to display pin 4
-    let screen_enable = 27; // GPIO 2  physical pin 13 E ie Strobe goes to display pin 6 (also known as Enable)
-    let screen_data4 = 22; //  GPIO 3  physical pin 15	           goes to display pin 11
-    let screen_data5 = 23; //  GPIO 4  physical pin 16 	           goes to display pin 12
-    let screen_data6 = 24; //  GPIO 5  physical pin 18	           goes to display pin 13
-    let screen_data7 = 25; //  GPIO 6  physical pin 22	           goes to display pin 14
-                           //          physical pin 25 & 6 gnd     goes to display 1
-                           //                           brightness goes to display 3
-                           //          physical pin 2     +5       goes to display 2
-                           //                             gnd      goes to display 16 (lighing gnd))
-                           //          physical pin 4   dispay +5  goes to dispaly 15 (Anode lighting diode power)
+#[derive(Debug, serde::Deserialize)]
+struct PinDeclarations {
+    rs: u32,     // Register Select
+    enable: u32, // Also known as strobe and clock
+    data4: u32,
+    data5: u32,
+    data6: u32,
+    data7: u32,
+}
 
-    println!(
-        "RS pin {} enable pin {} D4...7 {}, {}, {}, {}",
-        screen_rs, screen_enable, screen_data4, screen_data5, screen_data6, screen_data7
-    );
+impl PinDeclarations {
+    fn create_display(
+        self,
+        chip: &mut gpio_cdev::Chip,
+    ) -> Result<
+        clerk::Display<
+            clerk::ParallelConnection<
+                Line,
+                FakeLine,
+                Line,
+                clerk::DataPins4Lines<Line, Line, Line, Line>,
+                Delay,
+            >,
+            clerk::DefaultLines,
+        >,
+        gpio_cdev::errors::Error,
+    > {
+        let register_select = get_line(chip, self.rs, "register_select")?;
+        let read = FakeLine;
+        let enable = get_line(chip, self.enable, "enable")?;
+        let data4 = get_line(chip, self.data4, "data4")?;
+        let data5 = get_line(chip, self.data5, "data5")?;
+        let data6 = get_line(chip, self.data6, "data6")?;
+        let data7 = get_line(chip, self.data7, "data7")?;
+
+        let pins = Pins {
+            register_select,
+            read,
+            enable,
+            data: DataPins4Lines {
+                data4,
+                data5,
+                data6,
+                data7,
+            },
+        };
+
+        let lcd = clerk::Display::<_, clerk::DefaultLines>::new(pins.into_connection::<Delay>());
+
+        lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two)); //screen has 4 lines, but electrically, only 2
+        std::thread::sleep(std::time::Duration::from_millis(3)); //with this line commented out, screen goes blank, and cannot be written to subsequently
+                                                                 //1.5 ms is marginal as 1.2ms does not work.
+
+        lcd.set_display_control(
+            clerk::DisplayControlBuilder::default() //defaults are display on cursor off blinking off ie cursor is an underscore
+                .set_cursor(clerk::CursorState::On), //normally we want the cursor off
+        ); //no extra delay needed here
+
+        lcd.clear();
+        std::thread::sleep(std::time::Duration::from_millis(2)); //if this line is commented out, garbage or nothing appears. 1ms is marginal
+
+        Ok(lcd)
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pins_src = std::fs::read_to_string("wiring_pins.toml")?;
+    let pins: PinDeclarations = toml::from_str(&pins_src)?;
+
+    println!("{:?}", pins);
 
     let mut args = std::env::args().skip(1);
     let line_as_integer = args.next().map(|shift| shift.parse().unwrap()).unwrap_or(0);
@@ -112,39 +164,7 @@ fn main() -> Result<(), gpio_cdev::errors::Error> {
     println!("Message: {:?}", message);
 
     let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?; //no delay needed here
-    let register_select = get_line(&mut chip, screen_rs, "register_select")?;
-    let read = FakeLine;
-    let enable = get_line(&mut chip, screen_enable, "enable")?;
-    let data4 = get_line(&mut chip, screen_data4, "data4")?;
-    let data5 = get_line(&mut chip, screen_data5, "data5")?;
-    let data6 = get_line(&mut chip, screen_data6, "data6")?;
-    let data7 = get_line(&mut chip, screen_data7, "data7")?;
-
-    let pins = Pins {
-        register_select,
-        read,
-        enable,
-        data: DataPins4Lines {
-            data4,
-            data5,
-            data6,
-            data7,
-        },
-    };
-
-    let mut lcd = clerk::Display::<_, clerk::DefaultLines>::new(pins.into_connection::<Delay>()); //no extra delay needed here
-
-    lcd.init(clerk::FunctionSetBuilder::default().set_line_number(clerk::LineNumber::Two)); //screen has 4 lines, but electrically, only 2
-    std::thread::sleep(std::time::Duration::from_millis(3)); //with this line commented out, screen goes blank, and cannot be written to subsequently
-                                                             //1.5 ms is marginal as 1.2ms does not work.
-
-    lcd.set_display_control(
-        clerk::DisplayControlBuilder::default() //defaults are display on cursor off blinking off ie cursor is an underscore
-            .set_cursor(clerk::CursorState::On), //normally we want the cursor off
-    ); //no extra delay needed here
-
-    lcd.clear();
-    std::thread::sleep(std::time::Duration::from_millis(2)); //if this line is commented out, garbage or nothing appears. 1ms is marginal
+    let mut lcd = pins.create_display(&mut chip)?;
 
     for c in "test2".chars() {
         lcd.write(c as u8);
