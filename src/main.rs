@@ -74,7 +74,6 @@ fn get_line(
             .request(gpio_cdev::LineRequestFlags::OUTPUT, 0, consumer)?;
     Ok(Line { handle })
 }
-
 #[derive(Debug, serde::Deserialize)]
 struct PinDeclarations {
     rs: u32,     // Register Select
@@ -166,7 +165,62 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut chip = gpio_cdev::Chip::new("/dev/gpiochip0")?; //no delay needed here
     let mut lcd = pins.create_display(&mut chip)?;
 
-    for c in "test2".chars() {
+    lcd.seek_cgram(clerk::SeekFrom::Home(0)); //specify we want to write to the character generator in position 0. Must be a multiple of 8 if we want to start at the start of character
+    lcd.write(31); //write top row of charcter. 1= right to righthand most dot
+    lcd.write(1);
+    lcd.write(1);
+    lcd.write(1);
+    lcd.write(1);
+    lcd.write(1);
+    lcd.write(0);
+    lcd.write(1);
+
+    for _count in 0..0x8 {
+        lcd.write(31);
+    }
+    for _count in 0..0x8 {
+        lcd.write(1);
+    }
+
+    let e_accute_pattern: [u8; 8] = [
+        //the value 8 is used as we have an 8 by 5 character.
+        0b01100, // pattern for topmost row
+        0b10000, // this pattern specifies that the left-most bit is on, & the other 4 are off on the top but one row.
+        0b01110, //
+        0b10001, //
+        0b11111, //
+        0b10000, //
+        0b01110, //
+        0b00000, // bottom row, which is expected to be all zeros
+                 // example test sequence      cargo run --release  3 0 "éèñöüäµπ123! "{""["""|"""">"""
+    ];
+
+    let e_grave_pattern: [u8; 8] = [
+        0b00110, //
+        0b00001, //
+        0b01110, //
+        0b10001, //
+        0b11111, //
+        0b10000, //
+        0b01110, //
+        0b00000,
+    ];
+
+    for count in 0..8 {
+        lcd.write(e_accute_pattern[count]);
+    }
+    for count in 0..8 {
+        lcd.write(e_grave_pattern[count]);
+    }
+
+    lcd.seek(clerk::SeekFrom::Home(0)); //specify we want to write characters to be output, starting at position 0
+
+    for count in 0..0x8 {
+        //we can only specify 8 characters, so we only need to 8.
+        lcd.write(count);
+    }
+
+    for c in "test".chars() {
         lcd.write(c as u8);
     }
 
@@ -175,13 +229,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for c in message.chars() {
         let cc = match c {
             ' '..='}' => c as u8,
-            'ä' => 0xE1,
-            'ñ' => 0xEE,
-            'ö' => 0xEF,
-            'ü' => 0xF5,
-            'π' => 0xE4,
-            'µ' => 0xF7,
-            _ => 0xFF, // solid square used when the decode fails
+            'é' => 3,    // e accute third bespoke character defined
+            'è' => 4,    // e grave
+            'ä' => 0xE1, // a umlaut
+            'ñ' => 0xEE, // n tilde
+            'ö' => 0xEF, // o umlaut
+            'ü' => 0xF5, // u umlaut
+            'π' => 0xE4, // pi
+            'µ' => 0xF7, // mu
+            _ => 0xFF,    // solid square used when the decode fails
         };
         lcd.write(cc as u8);
     }
@@ -189,27 +245,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 /*
-const unsigned char e_accute_pattern[8] =
-    {
-        0b01100,
-        0b10000,
-        0b01110,
-        0b10001,
-        0b11111,
-        0b10000,
-        0b01110,
-        0b00000};
 
-const unsigned char e_grave_pattern[8] =
-    {
-        0b00110,
-        0b00001,
-        0b01110,
-        0b10001,
-        0b11111,
-        0b10000,
-        0b01110,
-        0b00000};
+
 
 const unsigned char buffer_1_pattern[8] =
     {
