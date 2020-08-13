@@ -140,12 +140,19 @@ impl PinDeclarations {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pins_src = std::fs::read_to_string("wiring_pins.toml")?;
+    let pins_src = std::fs::read_to_string("/boot/wiring_pins.toml")?;
     let pins: PinDeclarations = toml::from_str(&pins_src)?;
 
     println!("{:?}", pins);
 
-    let mut args = std::env::args().skip(1);
+    let mut args = std::env::args();
+
+    let innn = args
+        .next()
+        .unwrap_or_else(|| String::from("useage line number offset text"));
+
+    println!("{:?}", innn);
+
     let line_as_integer = args.next().map(|shift| shift.parse().unwrap()).unwrap_or(0);
 
     let line = match line_as_integer {
@@ -206,11 +213,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         0b00000,
     ];
 
-    for count in 0..8 {
-        lcd.write(e_accute_pattern[count]);
+    for row in e_accute_pattern.iter() {
+        lcd.write(*row);
     }
-    for count in 0..8 {
-        lcd.write(e_grave_pattern[count]);
+    for row in e_grave_pattern.iter() {
+        lcd.write(*row);
     }
 
     lcd.seek(clerk::SeekFrom::Home(0)); //specify we want to write characters to be output, starting at position 0
