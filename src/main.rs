@@ -233,20 +233,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     lcd.seek(clerk::SeekFrom::Home(line.offset() + shift));
 
-    for c in message.chars() {
-        let cc = match c {
-            ' '..='}' => c as u8,
-            'é' => 3,    // e accute third bespoke character defined
-            'è' => 4,    // e grave
-            'ä' => 0xE1, // a umlaut
-            'ñ' => 0xEE, // n tilde
-            'ö' => 0xEF, // o umlaut
-            'ü' => 0xF5, // u umlaut
-            'π' => 0xE4, // pi
-            'µ' => 0xF7, // mu
-            _ => 0xFF,    // solid square used when the decode fails
+    for unicode_character in message.chars() {
+        let ascii_character_bytes = match unicode_character {
+            'é' => &[3],     // e accute third bespoke character defined
+            'è' => &[4],     // e grave
+            'ä' => &[0xE1],  // a umlaut
+            'ñ' => &[0xEE],  // n tilde
+            'ö' => &[0xEF],  // o umlaut
+            'ü' => &[0xF5],  // u umlaut
+            'π' => &[0xE4],  // pi
+            'µ' => &[0xF7],  // mu
+            '' => &[0xFF], // <Control> replaced by splodge
+            _ => unidecode::unidecode_char(unicode_character).as_bytes(),
         };
-        lcd.write(cc as u8);
+        for octet in ascii_character_bytes {
+            lcd.write(*octet);
+        }
     }
 
     Ok(())
