@@ -234,20 +234,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     lcd.seek(clerk::SeekFrom::Home(line.offset() + shift));
 
     for unicode_character in message.chars() {
-        let ascii_character_bytes = match unicode_character {
-            'é' => &[3],     // e accute third bespoke character defined
-            'è' => &[4],     // e grave
-            'ä' => &[0xE1],  // a umlaut
-            'ñ' => &[0xEE],  // n tilde
-            'ö' => &[0xEF],  // o umlaut
-            'ü' => &[0xF5],  // u umlaut
-            'π' => &[0xE4],  // pi
-            'µ' => &[0xF7],  // mu
-            '' => &[0xFF], // <Control> replaced by splodge
-            _ => unidecode::unidecode_char(unicode_character).as_bytes(),
-        };
-        for octet in ascii_character_bytes {
-            lcd.write(*octet);
+        if unicode_character < '~' {
+            lcd.write(unicode_character as u8)
+        } else {
+            let ascii_character_bytes = match unicode_character {
+                'é' => &[3],     // e accute third bespoke character defined
+                'è' => &[4],     // e grave
+                'ä' => &[0xE1], // a umlaut            // see look up table in GDM2004D.pdf page 9/9
+                'ñ' => &[0xEE], // n tilde
+                'ö' => &[0xEF], // o umlaut
+                'ü' => &[0xF5], // u umlaut
+                'π' => &[0xE4], // pi
+                'µ' => &[0xF7], // mu
+                '~' => &[0xF3], // cannot display tilde using the standard character set in GDM2004D.pdf. This is the best we can do.
+                '' => &[0xFF], // <Control> replaced by splodge
+                _ => unidecode::unidecode_char(unicode_character).as_bytes(),
+            };
+            for octet in ascii_character_bytes {
+                lcd.write(*octet);
+            }
         }
     }
 

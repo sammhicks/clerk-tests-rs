@@ -11,3 +11,4 @@ clerk = "0.4"
 gpio-cdev = "0.3"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.5"
+unidecode = "0.3"
