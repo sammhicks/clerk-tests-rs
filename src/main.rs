@@ -199,7 +199,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         0b10000, //
         0b01110, //
         0b00000, // bottom row, which is expected to be all zeros
-                 // example test sequence      cargo run --release  3 0 "éèñöüäµπ123! "{""["""|"""">"""
+                 // example test sequence      cargo run --release  3 0 "éèñöüäµπà~"{""["""|"""">"""
     ];
 
     let e_grave_pattern: [u8; 8] = [
@@ -213,10 +213,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         0b00000,
     ];
 
+    let a_grave_pattern: [u8; 8] = [
+        0b00110, //
+        0b00001, //
+        0b01110, //
+        0b00001, //
+        0b01111, //
+        0b10001, //
+        0b01111, //
+        0b00000,
+    ];
+
     for row in e_accute_pattern.iter() {
         lcd.write(*row);
     }
     for row in e_grave_pattern.iter() {
+        lcd.write(*row);
+    }
+    for row in a_grave_pattern.iter() {
         lcd.write(*row);
     }
 
@@ -240,6 +254,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             let ascii_character_bytes = match unicode_character {
                 'é' => &[3],     // e accute third bespoke character defined
                 'è' => &[4],     // e grave
+                'à' => &[5],     // a grave
                 'ä' => &[0xE1], // a umlaut            // see look up table in GDM2004D.pdf page 9/9
                 'ñ' => &[0xEE], // n tilde
                 'ö' => &[0xEF], // o umlaut
