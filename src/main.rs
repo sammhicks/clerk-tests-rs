@@ -1,5 +1,7 @@
 use clerk::{DataPins4Lines, Pins};
 
+mod character_pattern;
+
 enum LCDLineNumbers {
     Line1,
     Line2,
@@ -173,65 +175,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut lcd = pins.create_display(&mut chip)?;
 
     lcd.seek_cgram(clerk::SeekFrom::Home(0)); //specify we want to write to the character generator in position 0. Must be a multiple of 8 if we want to start at the start of character
-    lcd.write(31); //write top row of charcter. 1= right to righthand most dot
-    lcd.write(1);
-    lcd.write(1);
-    lcd.write(1);
-    lcd.write(1);
-    lcd.write(1);
-    lcd.write(0);
-    lcd.write(1);
 
-    for _count in 0..0x8 {
-        lcd.write(31);
-    }
-    for _count in 0..0x8 {
-        lcd.write(1);
-    }
+    //example test command       cargo run --release  33 0 "éèàñöüäµπ~{"["""|"""">"""}
 
-    let e_accute_pattern: [u8; 8] = [
-        //the value 8 is used as we have an 8 by 5 character.
-        0b01100, // pattern for topmost row
-        0b10000, // this pattern specifies that the left-most bit is on, & the other 4 are off on the top but one row.
-        0b01110, //
-        0b10001, //
-        0b11111, //
-        0b10000, //
-        0b01110, //
-        0b00000, // bottom row, which is expected to be all zeros
-                 // example test sequence      cargo run --release  3 0 "éèñöüäµπà~"{""["""|"""">"""
-    ];
-
-    let e_grave_pattern: [u8; 8] = [
-        0b00110, //
-        0b00001, //
-        0b01110, //
-        0b10001, //
-        0b11111, //
-        0b10000, //
-        0b01110, //
-        0b00000,
-    ];
-
-    let a_grave_pattern: [u8; 8] = [
-        0b00110, //
-        0b00001, //
-        0b01110, //
-        0b00001, //
-        0b01111, //
-        0b10001, //
-        0b01111, //
-        0b00000,
-    ];
-
-    for row in e_accute_pattern.iter() {
-        lcd.write(*row);
-    }
-    for row in e_grave_pattern.iter() {
-        lcd.write(*row);
-    }
-    for row in a_grave_pattern.iter() {
-        lcd.write(*row);
+    for character_bitmap in character_pattern::BITMAPS.iter() {
+        for row in character_bitmap.iter() {
+            lcd.write(*row);
+        }
     }
 
     lcd.seek(clerk::SeekFrom::Home(0)); //specify we want to write characters to be output, starting at position 0
@@ -249,12 +199,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for unicode_character in message.chars() {
         if unicode_character < '~' {
+            // chartacters lower than ~ are handled by the built-in character set
             lcd.write(unicode_character as u8)
         } else {
             let ascii_character_bytes = match unicode_character {
-                'é' => &[3],     // e accute third bespoke character defined
-                'è' => &[4],     // e grave
-                'à' => &[5],     // a grave
+                'é' => &[5], // e accute fifth bespoke character defined starting with the zeroeth bespoke character
+                'è' => &[6], // e grave
+                'à' => &[7], // a grave
                 'ä' => &[0xE1], // a umlaut            // see look up table in GDM2004D.pdf page 9/9
                 'ñ' => &[0xEE], // n tilde
                 'ö' => &[0xEF], // o umlaut
@@ -262,7 +213,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 'π' => &[0xE4], // pi
                 'µ' => &[0xF7], // mu
                 '~' => &[0xF3], // cannot display tilde using the standard character set in GDM2004D.pdf. This is the best we can do.
-                '' => &[0xFF], // <Control> replaced by splodge
+                '' => &[0xFF], // <Control>  = 0x80 replaced by splodge
                 _ => unidecode::unidecode_char(unicode_character).as_bytes(),
             };
             for octet in ascii_character_bytes {
@@ -273,58 +224,3 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
-/*
-
-
-
-const unsigned char buffer_1_pattern[8] =
-    {
-        0b10000,
-        0b10000,
-        0b10000,
-        0b10000,
-        0b10000,
-        0b10000,
-        0b10000,
-        0b11111};
-const unsigned char buffer_2_pattern[8] =
-    {
-        0b01000,
-        0b01000,
-        0b01000,
-        0b01000,
-        0b01000,
-        0b01000,
-        0b01000,
-        0b11111};
-const unsigned char buffer_3_pattern[8] =
-    {
-        0b00100,
-        0b00100,
-        0b00100,
-        0b00100,
-        0b00100,
-        0b00100,
-        0b00100,
-        0b11111};
-const unsigned char buffer_4_pattern[8] =
-    {
-        0b00010,
-        0b00010,
-        0b00010,
-        0b00010,
-        0b00010,
-        0b00010,
-        0b00010,
-        0b11111};
-const unsigned char buffer_5_pattern[8] =
-    {
-        0b00001,
-        0b00001,
-        0b00001,
-        0b00001,
-        0b00001,
-        0b00001,
-        0b00001,
-        0b11111};
-*/
