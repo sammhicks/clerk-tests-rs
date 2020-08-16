@@ -199,7 +199,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     for unicode_character in message.chars() {
         if unicode_character < '~' {
-            // chartacters lower than ~ are handled by the built-in character set
+            // characters lower than ~ are handled by the built-in character set
             lcd.write(unicode_character as u8)
         } else {
             let ascii_character_bytes = match unicode_character {
